@@ -1,4 +1,10 @@
-use std::net::{Ipv4Addr, SocketAddrV4};
+use std::{
+    net::{Ipv4Addr, SocketAddrV4},
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 use clap::Parser;
 use futures_util::{StreamExt, pin_mut};
@@ -58,7 +64,11 @@ async fn main() {
         UdpSocket::bind(&addr).await.unwrap().into()
     };
 
-    let (tx, mut rx) = mpsc::channel::<LinearOwnedReusable<Payload>>(65536);
+    let counter = Arc::new(AtomicUsize::new(0));
+    let counter_send = counter.clone();
+
+    //let (tx, mut rx) = mpsc::channel::<LinearOwnedReusable<Payload>>(65536);
+    let (tx, mut rx) = mpsc::unbounded_channel::<LinearOwnedReusable<Payload>>();
 
     let mut npkts_received = 0;
     let mut current_file_no = 0;
@@ -85,7 +95,8 @@ async fn main() {
         let mut s = receive_pkt(socket);
         pin_mut!(s);
         while let Some(payload) = s.next().await {
-            if tx.send(payload).await.is_err() {
+            counter.fetch_add(1, Ordering::Relaxed);
+            if tx.send(payload).is_err() {
                 break; // 写入端关闭了
             }
         }
@@ -93,10 +104,20 @@ async fn main() {
 
     let mut flush_interval = tokio::time::interval(Duration::from_secs(1));
 
+    let counter_print=counter_send.clone();
+    tokio::spawn(async move {
+        loop {
+            println!("queue length: {}", counter_print.load(Ordering::Relaxed));
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+    });
+
     //while let Some(payload) = s.next().await {
+
     loop {
         tokio::select! {
             Some(payload)=rx.recv()=>{
+                counter_send.fetch_sub(1, Ordering::Relaxed);
                 if let Some(f) = dump_file.as_mut() {
                     f.write_all(as_u8_slice(&payload.data))
                         .await
@@ -108,6 +129,7 @@ async fn main() {
                 if let Some(n) = args.npkts_to_recv
                     && npkts_received >= n
                 {
+                    drop(rx);
                     break;
                 }
 
