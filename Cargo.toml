@@ -1,0 +1,15 @@
+[package]
+name = "sdaa_async"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1.38", features = ["full"] }
+tokio-stream = "0.1"
+async-stream = "0.3"
+futures-util = "0.3.31"
+futures-core = "0.3.31"
+lockfree-object-pool = "0.1.6"
+libc = "0.2.174"
+chrono = "0.4.41"
+clap = { version = "4.5.41", features = ["derive"] }
