@@ -51,7 +51,7 @@ pub fn receive_pkt(
             if now.duration_since(last_print_time) >= print_interval {
                 let local_time = Local::now().format("%Y-%m-%d %H:%M:%S");
                 println!(
-                    "{local_time} {ndropped} ratio<{:e}",
+                    "{local_time} {ndropped} pkts dropped, ratio<{:e}",
                     (1 + ndropped) as f64 / nreceived as f64
                 );
                 last_print_time = now;
