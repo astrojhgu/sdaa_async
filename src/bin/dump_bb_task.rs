@@ -58,7 +58,7 @@ async fn main() {
         UdpSocket::bind(&addr).await.unwrap().into()
     };
 
-    let (tx, mut rx) = mpsc::channel::<LinearOwnedReusable<Payload>>(100);
+    let (tx, mut rx) = mpsc::channel::<LinearOwnedReusable<Payload>>(65536);
 
     let mut npkts_received = 0;
     let mut current_file_no = 0;
